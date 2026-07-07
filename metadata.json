@@ -1,0 +1,6 @@
+{
+  "name": "EProcure",
+  "description": "Perdeu um documento? O EProcure ajuda você a encontrá-lo. Conectando pessoas que perderam e encontraram documentos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
