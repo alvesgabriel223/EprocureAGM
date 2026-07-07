@@ -23,15 +23,23 @@ class EProcureRepository(
     private val messageDao: MessageDao
 ) {
     // --- User Session ---
-    suspend fun getOrCreateUser(email: String, name: String, phone: String): UserEntity = withContext(Dispatchers.IO) {
+    suspend fun getOrCreateUser(email: String, name: String, phone: String, profilePhoto: String? = null): UserEntity = withContext(Dispatchers.IO) {
         val cleanEmail = email.trim().lowercase()
         val existing = userDao.getUserById(cleanEmail)
-        // Wait for first flow value or return new
+        
+        // Auto-assign image key if not provided based on keywords in name
+        val finalPhoto = profilePhoto ?: when {
+            name.contains("Alves", ignoreCase = true) || name.contains("Marizane", ignoreCase = true) -> "alves"
+            name.contains("Maria", ignoreCase = true) || name.contains("Ana", ignoreCase = true) -> "female"
+            else -> "male"
+        }
+
         val user = UserEntity(
             id = cleanEmail,
             name = name.trim(),
             phone = phone.trim(),
-            email = cleanEmail
+            email = cleanEmail,
+            profilePhoto = finalPhoto
         )
         userDao.insertUser(user)
         user

@@ -214,10 +214,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // --- Authentication Flow ---
-    fun registerOrLogin(name: String, email: String, phone: String) {
+    fun registerOrLogin(name: String, email: String, phone: String, profilePhoto: String? = null) {
         viewModelScope.launch {
             _isLoading.value = true
-            val user = repository.getOrCreateUser(email, name, phone)
+            val user = repository.getOrCreateUser(email, name, phone, profilePhoto)
             _currentUser.value = user
             _isLoading.value = false
             _currentTab.value = "DASHBOARD"

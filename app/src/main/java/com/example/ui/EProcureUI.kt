@@ -42,6 +42,65 @@ import com.example.data.entity.DocumentEntity
 import com.example.data.entity.MessageEntity
 import kotlinx.coroutines.delay
 
+@Composable
+fun UserAvatar(photoKey: String?, size: androidx.compose.ui.unit.Dp, modifier: Modifier = Modifier) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier.size(size)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .border(
+                    width = 1.5.dp,
+                    brush = androidx.compose.ui.graphics.Brush.sweepGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary,
+                            MaterialTheme.colorScheme.secondary,
+                            MaterialTheme.colorScheme.tertiary,
+                            MaterialTheme.colorScheme.primary
+                        )
+                    ),
+                    shape = CircleShape
+                )
+        )
+
+        val drawableRes = when (photoKey) {
+            "alves" -> com.example.R.drawable.img_developer_alves
+            "male" -> com.example.R.drawable.img_avatar_male
+            "female" -> com.example.R.drawable.img_avatar_female
+            else -> null
+        }
+
+        if (drawableRes != null) {
+            Image(
+                painter = painterResource(id = drawableRes),
+                contentDescription = "Foto de perfil",
+                modifier = Modifier
+                    .size(size - 4.dp)
+                    .clip(CircleShape)
+                    .background(Color.White),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(size - 4.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Person,
+                    contentDescription = "Foto de perfil padrão",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(size * 0.5f)
+                )
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EProcureApp(viewModel: MainViewModel) {
@@ -52,8 +111,8 @@ fun EProcureApp(viewModel: MainViewModel) {
     if (currentUser == null) {
         OnboardingScreen(
             isLoading = isLoading,
-            onRegister = { name, email, phone ->
-                viewModel.registerOrLogin(name, email, phone)
+            onRegister = { name, email, phone, profilePhoto ->
+                viewModel.registerOrLogin(name, email, phone, profilePhoto)
             }
         )
     } else {
@@ -197,9 +256,10 @@ fun EProcureBottomNavigation(
 @Composable
 fun OnboardingScreen(
     isLoading: Boolean,
-    onRegister: (String, String, String) -> Unit
+    onRegister: (String, String, String, String?) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
+    var selectedPhotoKey by remember { mutableStateOf("neutral") }
     var email by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var hasError by remember { mutableStateOf(false) }
@@ -395,6 +455,60 @@ fun OnboardingScreen(
                         singleLine = true
                     )
 
+                    Text(
+                        text = "Escolha sua Foto de Perfil",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val avatarChoices = listOf(
+                            Triple("neutral", "Padrão", null),
+                            Triple("alves", "Alves", com.example.R.drawable.img_developer_alves),
+                            Triple("male", "Masc", com.example.R.drawable.img_avatar_male),
+                            Triple("female", "Fem", com.example.R.drawable.img_avatar_female)
+                        )
+                        
+                        avatarChoices.forEach { (key, label, drawableRes) ->
+                            val isSelected = selectedPhotoKey == key
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant)
+                                    .border(
+                                        width = if (isSelected) 3.dp else 1.dp,
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                        shape = CircleShape
+                                    )
+                                    .clickable { selectedPhotoKey = key }
+                            ) {
+                                if (drawableRes != null) {
+                                    Image(
+                                        painter = painterResource(id = drawableRes),
+                                        contentDescription = label,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Filled.Person,
+                                        contentDescription = label,
+                                        tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     if (hasError) {
                         Text(
                             text = "Por favor preencha todos os campos correctamente.",
@@ -406,7 +520,7 @@ fun OnboardingScreen(
                     Button(
                         onClick = {
                             if (name.isNotBlank() && email.isNotBlank() && phone.isNotBlank()) {
-                                onRegister(name, email, phone)
+                                onRegister(name, email, phone, selectedPhotoKey)
                             } else {
                                 hasError = true
                             }
@@ -428,7 +542,7 @@ fun OnboardingScreen(
                     // Simulated Google Sign in Option
                     OutlinedButton(
                         onClick = {
-                            onRegister("Alves Marizane", "alves@gmail.com", "+258 84 123 4567")
+                            onRegister("Alves Marizane", "alves@gmail.com", "+258 84 123 4567", "alves")
                         },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(100.dp)
@@ -494,29 +608,35 @@ fun DashboardScreen(viewModel: MainViewModel) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column {
-                    Text(
-                        text = "Olá, ${currentUser?.name ?: "Utilizador"}!",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.padding(top = 2.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .background(Color(0xFF00FFCC), CircleShape) // Neon Emerald Active pulse
-                        )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    UserAvatar(photoKey = currentUser?.profilePhoto, size = 52.dp)
+                    Column {
                         Text(
-                            text = "Sistema Inteligente Online",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF00FFCC)
+                            text = "Olá, ${currentUser?.name ?: "Utilizador"}!",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.onBackground
                         )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(top = 2.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .background(Color(0xFF00FFCC), CircleShape) // Neon Emerald Active pulse
+                            )
+                            Text(
+                                text = "Sistema Inteligente Online",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF00FFCC)
+                            )
+                        }
                     }
                 }
 
@@ -842,12 +962,24 @@ fun DocumentItemCard(doc: DocumentEntity, onClick: () -> Unit) {
                     }
                 }
 
-                Text(
-                    text = "Titular: ${doc.ownerName}",
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(vertical = 2.dp)
+                ) {
+                    val photoKey = when {
+                        doc.ownerName.contains("Alves", ignoreCase = true) || doc.ownerName.contains("Marizane", ignoreCase = true) -> "alves"
+                        doc.ownerName.contains("Maria", ignoreCase = true) || doc.ownerName.contains("Nhaca", ignoreCase = true) -> "female"
+                        else -> "male"
+                    }
+                    UserAvatar(photoKey = photoKey, size = 18.dp)
+                    Text(
+                        text = "Titular: ${doc.ownerName}",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                    )
+                }
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -1170,7 +1302,35 @@ fun DocumentDetailDialog(
                 }
 
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DetailRow(label = "Titular", value = doc.ownerName)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Titular",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            val photoKey = when {
+                                doc.ownerName.contains("Alves", ignoreCase = true) || doc.ownerName.contains("Marizane", ignoreCase = true) -> "alves"
+                                doc.ownerName.contains("Maria", ignoreCase = true) || doc.ownerName.contains("Nhaca", ignoreCase = true) -> "female"
+                                else -> "male"
+                            }
+                            UserAvatar(photoKey = photoKey, size = 24.dp)
+                            Text(
+                                text = doc.ownerName,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
                     DetailRow(label = "Estado", value = if (doc.isDelivered) "Devolvido com Sucesso ✅" else if (doc.status == "LOST") "Perdido" else "Encontrado")
                     DetailRow(label = "Local", value = doc.location)
                     DetailRow(label = "Data Aproximada", value = doc.date)
@@ -1352,7 +1512,19 @@ fun MatchItemCard(match: Pair<DocumentEntity, DocumentEntity>, onClick: () -> Un
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Perdido por", fontSize = 11.sp, color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.6f))
-                    Text(lost.ownerName, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.padding(vertical = 2.dp)
+                    ) {
+                        val lostPhotoKey = when {
+                            lost.ownerName.contains("Alves", ignoreCase = true) || lost.ownerName.contains("Marizane", ignoreCase = true) -> "alves"
+                            lost.ownerName.contains("Maria", ignoreCase = true) || lost.ownerName.contains("Nhaca", ignoreCase = true) -> "female"
+                            else -> "male"
+                        }
+                        UserAvatar(photoKey = lostPhotoKey, size = 18.dp)
+                        Text(lost.ownerName, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                    }
                     Text(lost.location, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
 
@@ -1373,7 +1545,19 @@ fun MatchItemCard(match: Pair<DocumentEntity, DocumentEntity>, onClick: () -> Un
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Encontrado em", fontSize = 11.sp, color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.6f))
-                    Text(found.ownerName, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.padding(vertical = 2.dp)
+                    ) {
+                        val foundPhotoKey = when {
+                            found.ownerName.contains("Alves", ignoreCase = true) || found.ownerName.contains("Marizane", ignoreCase = true) -> "alves"
+                            found.ownerName.contains("Maria", ignoreCase = true) || found.ownerName.contains("Nhaca", ignoreCase = true) -> "female"
+                            else -> "male"
+                        }
+                        UserAvatar(photoKey = foundPhotoKey, size = 18.dp)
+                        Text(found.ownerName, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                    }
                     Text(found.location, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
@@ -1558,20 +1742,12 @@ fun ChatRoomScreen(viewModel: MainViewModel) {
                     Icon(Icons.Filled.ArrowBack, contentDescription = "Voltar")
                 }
 
-                Card(
-                    shape = CircleShape,
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f)),
-                    modifier = Modifier.size(44.dp)
-                ) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = opponentName.take(1).uppercase(),
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontSize = 18.sp
-                        )
-                    }
+                val opponentPhotoKey = when {
+                    opponentName.contains("Alves", ignoreCase = true) || opponentName.contains("Marizane", ignoreCase = true) -> "alves"
+                    opponentName.contains("Maria", ignoreCase = true) || opponentName.contains("Nhaca", ignoreCase = true) || opponentName.contains("Finder", ignoreCase = true) -> "female"
+                    else -> "male"
                 }
+                UserAvatar(photoKey = opponentPhotoKey, size = 44.dp)
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -1892,7 +2068,19 @@ fun MapScreen(viewModel: MainViewModel) {
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(doc.type, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                        Text("Titular: ${doc.ownerName}", fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(vertical = 2.dp)
+                        ) {
+                            val photoKey = when {
+                                doc.ownerName.contains("Alves", ignoreCase = true) || doc.ownerName.contains("Marizane", ignoreCase = true) -> "alves"
+                                doc.ownerName.contains("Maria", ignoreCase = true) || doc.ownerName.contains("Nhaca", ignoreCase = true) -> "female"
+                                else -> "male"
+                            }
+                            UserAvatar(photoKey = photoKey, size = 18.dp)
+                            Text("Titular: ${doc.ownerName}", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
                         Text("Local registado: ${doc.location}", fontSize = 12.sp, color = Color.Gray)
                     }
                     IconButton(onClick = { selectedDocOnMap = null }) {
